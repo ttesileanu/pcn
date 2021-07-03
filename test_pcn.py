@@ -270,3 +270,36 @@ def test_learning_effects_are_different_for_subsequent_runs(var):
 
     for old, new in zip(var1, var2):
         assert not torch.allclose(old, new)
+
+
+def test_compare_to_reference_implementation():
+    from pcn_ref import PCNetworkRef
+
+    seed = 100
+    dims = [2, 6, 5, 3]
+
+    x = torch.FloatTensor([[0.2, -0.3], [0.5, 0.7], [-0.3, 0.2]])
+    y = torch.FloatTensor([[-0.5, 0.2, 0.7], [1.5, 0.6, -0.3], [-0.2, 0.5, 0.6]])
+
+    net = PCNetwork(dims)
+
+    # do some learning
+    torch.manual_seed(seed)
+    net.reset()
+    for crt_x, crt_y in zip(x, y):
+        net.learn(crt_x, crt_y)
+
+    test_x = torch.FloatTensor([0.5, 0.2])
+    out = net.forward(test_x)
+
+    net_ref = PCNetworkRef(dims)
+
+    # do some learning
+    torch.manual_seed(seed)
+    net_ref.reset()
+    for crt_x, crt_y in zip(x, y):
+        net_ref.learn(crt_x, crt_y)
+
+    out_ref = net_ref.forward(test_x)
+
+    assert torch.allclose(out, out_ref)
