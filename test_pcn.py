@@ -296,7 +296,8 @@ def test_learning_effects_are_different_for_subsequent_runs():
         assert not torch.allclose(old, new)
 
 
-def test_compare_to_reference_implementation():
+@pytest.fixture
+def trained_current_and_ref() -> tuple:
     from pcn_ref import PCNetworkRef
 
     seed = 100
@@ -320,9 +321,6 @@ def test_compare_to_reference_implementation():
         net.loss().backward()
         optimizer.step()
 
-    test_x = torch.FloatTensor([0.5, 0.2])
-    out = net.forward(test_x)
-
     net_ref = PCNetworkRef(dims)
 
     # do some learning
@@ -337,6 +335,23 @@ def test_compare_to_reference_implementation():
     for crt_x, crt_y in zip(x, y):
         net_ref.learn(crt_x, crt_y)
 
+    return net, net_ref
+
+
+def test_compare_forward_result_after_learning_to_ref_impl(trained_current_and_ref):
+    net, net_ref = trained_current_and_ref
+
+    test_x = torch.FloatTensor([0.5, 0.2])
+
+    out = net.forward(test_x)
     out_ref = net_ref.forward(test_x)
 
     assert torch.allclose(out, out_ref)
+
+
+def test_compare_weights_after_learning_to_ref_impl(trained_current_and_ref):
+    net, net_ref = trained_current_and_ref
+
+    for layer, W, b in zip(net.layers, net_ref.W, net_ref.b):
+        assert torch.allclose(layer.weight, W)
+        assert torch.allclose(layer.bias, b)
