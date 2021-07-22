@@ -396,3 +396,96 @@ def test_forward_constrained_with_nontrivial_variances_vs_ref_impl():
 
     for crt_x, crt_x_ref in zip(net.x, net_ref.x):
         assert torch.allclose(crt_x, crt_x_ref)
+
+
+def test_training_with_batches_of_size_one():
+    seed = 100
+    dims = [2, 6, 5, 3]
+    variances = [0.5, 1.5, 2.7]
+    lr = 0.2
+
+    x = torch.FloatTensor([[0.2, -0.3], [0.5, 0.7], [-0.3, 0.2]])
+    y = torch.FloatTensor([[-0.5, 0.2, 0.7], [1.5, 0.6, -0.3], [-0.2, 0.5, 0.6]])
+
+    # do some learning
+    torch.manual_seed(seed)
+    net = PCNetwork(dims, variances=variances)
+
+    optimizer = torch.optim.SGD(net.slow_parameters(), lr=lr)
+    for crt_x, crt_y in zip(x, y):
+        net.forward_constrained(crt_x, crt_y)
+
+        optimizer.zero_grad()
+        net.loss().backward()
+        optimizer.step()
+
+    test_x = torch.FloatTensor([0.5, 0.2])
+    out = net.forward(test_x)
+
+    # do the same learning with batches of size 1
+    torch.manual_seed(seed)
+    net = PCNetwork(dims, variances=variances)
+
+    optimizer = torch.optim.SGD(net.slow_parameters(), lr=lr)
+    for crt_x, crt_y in zip(x, y):
+        crt_x_batch = crt_x[None, :]
+        crt_y_batch = crt_y[None, :]
+        net.forward_constrained(crt_x_batch, crt_y_batch)
+
+        optimizer.zero_grad()
+        net.loss().backward()
+        optimizer.step()
+
+    test_x = torch.FloatTensor([0.5, 0.2])
+    out_batch = net.forward(test_x)
+
+    assert torch.allclose(out, out_batch)
+
+
+def test_training_with_batches_of_nontrivial_size():
+    seed = 200
+    dims = [2, 6, 5]
+    variances = [0.5, 1.5]
+    lr = 1e-4
+    it_inference = 10
+
+    n_samples = 50
+
+    torch.manual_seed(seed)
+    x = torch.normal(0, 1, size=(n_samples, dims[0]))
+    y = torch.normal(0, 1, size=(n_samples, dims[-1]))
+
+    # do some learning
+    torch.manual_seed(seed)
+    kwargs = {"variances": variances, "it_inference": it_inference}
+    net = PCNetwork(dims, **kwargs)
+
+    optimizer = torch.optim.SGD(net.slow_parameters(), lr=lr)
+    for crt_x, crt_y in zip(x, y):
+        net.forward_constrained(crt_x, crt_y)
+
+        optimizer.zero_grad()
+        net.loss().backward()
+        optimizer.step()
+
+    test_x = torch.FloatTensor([0.5, -0.2])
+    out = net.forward(test_x)
+
+    # do the same learning with batches of size 1
+    torch.manual_seed(seed)
+    net = PCNetwork(dims, **kwargs)
+
+    optimizer = torch.optim.SGD(net.slow_parameters(), lr=lr)
+    for crt_x1, crt_x2, crt_y1, crt_y2 in zip(x[::2], x[1::2], y[::2], y[1::2]):
+        crt_x_batch = torch.vstack((crt_x1, crt_x2))
+        crt_y_batch = torch.vstack((crt_y1, crt_y2))
+        net.forward_constrained(crt_x_batch, crt_y_batch)
+
+        optimizer.zero_grad()
+        net.loss().backward()
+        optimizer.step()
+
+    test_x = torch.FloatTensor([0.5, -0.2])
+    out_batch = net.forward(test_x)
+
+    assert torch.allclose(out, out_batch)
