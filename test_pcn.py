@@ -12,13 +12,14 @@ def net():
 
 
 def test_number_of_layers(net):
-    assert len(net.layers) == 2
+    assert len(net.W) == 2
+    assert len(net.b) == 2
     assert len(net.x) == 3
 
 
 def test_weight_sizes(net):
-    assert net.layers[0].weight.shape == (4, 3)
-    assert net.layers[1].weight.shape == (2, 4)
+    assert net.W[0].shape == (4, 3)
+    assert net.W[1].shape == (2, 4)
 
 
 def test_x_sizes(net):
@@ -80,8 +81,8 @@ def test_forward_result_is_stationary_point_of_forward_constrained(net):
 def test_weights_and_biases_change_when_optimizing_slow_parameters(net):
     x0 = torch.FloatTensor([-0.3, -0.2, 0.6])
     y0 = torch.FloatTensor([0.9, 0.3])
-    old_Ws = [_.weight.clone().detach() for _ in net.layers]
-    old_bs = [_.bias.clone().detach() for _ in net.layers]
+    old_Ws = [_.clone().detach() for _ in net.W]
+    old_bs = [_.clone().detach() for _ in net.b]
 
     optimizer = torch.optim.Adam(net.slow_parameters(), lr=1.0)
     net.forward_constrained(x0, y0)
@@ -91,9 +92,9 @@ def test_weights_and_biases_change_when_optimizing_slow_parameters(net):
     loss.backward()
     optimizer.step()
 
-    for old_W, old_b, new in zip(old_Ws, old_bs, net.layers):
-        assert not torch.any(torch.isclose(old_W, new.weight))
-        assert not torch.any(torch.isclose(old_b, new.bias))
+    for old_W, old_b, new_W, new_b in zip(old_Ws, old_bs, net.W, net.b):
+        assert not torch.any(torch.isclose(old_W, new_W))
+        assert not torch.any(torch.isclose(old_b, new_b))
 
 
 def test_loss_is_nonzero_after_forward_constrained(net):
@@ -105,38 +106,38 @@ def test_loss_is_nonzero_after_forward_constrained(net):
 
 
 def test_forward_does_not_change_weights_and_biases(net):
-    old_Ws = [_.weight.clone().detach() for _ in net.layers]
-    old_bs = [_.bias.clone().detach() for _ in net.layers]
+    old_Ws = [_.clone().detach() for _ in net.W]
+    old_bs = [_.clone().detach() for _ in net.b]
     net.forward(torch.FloatTensor([0.3, -0.4, 0.2]))
 
-    for old_W, old_b, new in zip(old_Ws, old_bs, net.layers):
-        assert torch.allclose(old_W, new.weight)
-        assert torch.allclose(old_b, new.bias)
+    for old_W, old_b, new_W, new_b in zip(old_Ws, old_bs, net.W, net.b):
+        assert torch.allclose(old_W, new_W)
+        assert torch.allclose(old_b, new_b)
 
 
 def test_forward_constrained_does_not_change_weights_and_biases(net):
-    old_Ws = [_.weight.clone().detach() for _ in net.layers]
-    old_bs = [_.bias.clone().detach() for _ in net.layers]
+    old_Ws = [_.clone().detach() for _ in net.W]
+    old_bs = [_.clone().detach() for _ in net.b]
     net.forward_constrained(
         torch.FloatTensor([0.3, -0.4, 0.2]), torch.FloatTensor([-0.2, 0.2])
     )
 
-    for old_W, old_b, new in zip(old_Ws, old_bs, net.layers):
-        assert torch.allclose(old_W, new.weight)
-        assert torch.allclose(old_b, new.bias)
+    for old_W, old_b, new_W, new_b in zip(old_Ws, old_bs, net.W, net.b):
+        assert torch.allclose(old_W, new_W)
+        assert torch.allclose(old_b, new_b)
 
 
 def test_loss_does_not_change_weights_and_biases(net):
     # ensure the x variables have valid values assigned to them
     net.forward(torch.FloatTensor([0.1, 0.2, 0.3]))
 
-    old_Ws = [_.weight.clone().detach() for _ in net.layers]
-    old_bs = [_.bias.clone().detach() for _ in net.layers]
+    old_Ws = [_.clone().detach() for _ in net.W]
+    old_bs = [_.clone().detach() for _ in net.b]
     net.loss()
 
-    for old_W, old_b, new in zip(old_Ws, old_bs, net.layers):
-        assert torch.allclose(old_W, new.weight)
-        assert torch.allclose(old_b, new.bias)
+    for old_W, old_b, new_W, new_b in zip(old_Ws, old_bs, net.W, net.b):
+        assert torch.allclose(old_W, new_W)
+        assert torch.allclose(old_b, new_b)
 
 
 def test_no_nan_or_inf_after_a_few_learning_steps(net):
@@ -152,9 +153,9 @@ def test_no_nan_or_inf_after_a_few_learning_steps(net):
         net.loss().backward()
         optimizer.step()
 
-    for layer in net.layers:
-        assert torch.all(torch.isfinite(layer.weight))
-        assert torch.all(torch.isfinite(layer.bias))
+    for W, b in zip(net.W, net.b):
+        assert torch.all(torch.isfinite(W))
+        assert torch.all(torch.isfinite(b))
 
     for x in net.x:
         assert torch.all(torch.isfinite(x))
@@ -193,14 +194,14 @@ def test_initialize_values_same_when_torch_seed_is_same():
     torch.manual_seed(seed)
     net = PCNetwork(dims)
 
-    old_Ws = [_.weight.clone().detach() for _ in net.layers]
-    old_bs = [_.bias.clone().detach() for _ in net.layers]
+    old_Ws = [_.clone().detach() for _ in net.W]
+    old_bs = [_.clone().detach() for _ in net.b]
 
     torch.manual_seed(seed)
     net = PCNetwork(dims)
 
-    new_Ws = [_.weight.clone().detach() for _ in net.layers]
-    new_bs = [_.bias.clone().detach() for _ in net.layers]
+    new_Ws = [_.clone().detach() for _ in net.W]
+    new_bs = [_.clone().detach() for _ in net.b]
 
     for old_W, old_b, new_W, new_b in zip(old_Ws, old_bs, new_Ws, new_bs):
         assert torch.allclose(old_W, new_W)
@@ -214,10 +215,10 @@ def test_initialize_weights_change_for_subsequent_calls_if_seed_not_reset():
     torch.manual_seed(seed)
     net = PCNetwork(dims)
 
-    var1 = [_.weight.clone().detach() for _ in net.layers]
+    var1 = [_.clone().detach() for _ in net.W]
 
     net = PCNetwork(dims)
-    var2 = [_.weight.clone().detach() for _ in net.layers]
+    var2 = [_.clone().detach() for _ in net.W]
 
     for old, new in zip(var1, var2):
         assert not torch.any(torch.isclose(old, new))
@@ -241,7 +242,7 @@ def test_weights_reproducible_for_same_seed_after_learning():
         net.loss().backward()
         optimizer.step()
 
-    var1 = [_.weight.clone().detach() for _ in net.layers]
+    var1 = [_.clone().detach() for _ in net.W]
 
     # reset and do the learning again
     torch.manual_seed(seed)
@@ -254,7 +255,7 @@ def test_weights_reproducible_for_same_seed_after_learning():
         net.loss().backward()
         optimizer.step()
 
-    var2 = [_.weight.clone().detach() for _ in net.layers]
+    var2 = [_.clone().detach() for _ in net.W]
 
     for old, new in zip(var1, var2):
         assert torch.allclose(old, new)
@@ -278,7 +279,7 @@ def test_learning_effects_are_different_for_subsequent_runs():
         net.loss().backward()
         optimizer.step()
 
-    var1 = [_.weight.clone().detach() for _ in net.layers]
+    var1 = [_.clone().detach() for _ in net.W]
 
     # reset and do the learning again -- without resetting random seed this time!
     net = PCNetwork(dims)
@@ -290,7 +291,7 @@ def test_learning_effects_are_different_for_subsequent_runs():
         net.loss().backward()
         optimizer.step()
 
-    var2 = [_.weight.clone().detach() for _ in net.layers]
+    var2 = [_.clone().detach() for _ in net.W]
 
     for old, new in zip(var1, var2):
         assert not torch.allclose(old, new)
@@ -312,8 +313,8 @@ def trained_current_and_ref() -> tuple:
     torch.manual_seed(seed)
     net = PCNetwork(dims, variances=variances)
 
-    weights0 = [_.weight.clone().detach() for _ in net.layers]
-    biases0 = [_.bias.clone().detach() for _ in net.layers]
+    weights0 = [_.clone().detach() for _ in net.W]
+    biases0 = [_.clone().detach() for _ in net.b]
 
     # the Whittington&Bogacz implementation inexplicably multiplies the learning rates
     # by the output-layer variance
@@ -356,9 +357,9 @@ def test_compare_forward_result_after_learning_to_ref_impl(trained_current_and_r
 def test_compare_weights_after_learning_to_ref_impl(trained_current_and_ref):
     net, net_ref = trained_current_and_ref
 
-    for layer, W, b in zip(net.layers, net_ref.W, net_ref.b):
-        assert torch.allclose(layer.weight, W)
-        assert torch.allclose(layer.bias, b)
+    for new_W, new_b, W, b in zip(net.W, net.b, net_ref.W, net_ref.b):
+        assert torch.allclose(new_W, W)
+        assert torch.allclose(new_b, b)
 
 
 def test_forward_constrained_with_nontrivial_variances_vs_ref_impl():
@@ -375,8 +376,8 @@ def test_forward_constrained_with_nontrivial_variances_vs_ref_impl():
     torch.manual_seed(seed)
     net = PCNetwork(dims, variances=variances)
 
-    weights0 = [_.weight.clone().detach() for _ in net.layers]
-    biases0 = [_.bias.clone().detach() for _ in net.layers]
+    weights0 = [_.clone().detach() for _ in net.W]
+    biases0 = [_.clone().detach() for _ in net.b]
 
     net.forward_constrained(x, y)
 

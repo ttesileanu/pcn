@@ -50,9 +50,17 @@ class PCNetwork(object):
 
         # create and initialize the network parameters
         # weights and biases
-        self.layers = [
-            nn.Linear(self.dims[i], self.dims[i + 1]) for i in range(len(self.dims) - 1)
+        self.W = [
+            torch.Tensor(self.dims[i + 1], self.dims[i])
+            for i in range(len(self.dims) - 1)
         ]
+        self.b = [
+            torch.zeros(self.dims[i + 1], requires_grad=True)
+            for i in range(len(self.dims) - 1)
+        ]
+        for W in self.W:
+            nn.init.xavier_uniform_(W)
+            W.requires_grad = True
 
         self.x = [None for _ in self.dims]
 
@@ -68,7 +76,7 @@ class PCNetwork(object):
         xs = [x]
         for i in range(len(self.dims) - 1):
             x = self.activation[i](x)
-            x = self.layers[i](x)
+            x = x @ self.W[i].T + self.b[i]
 
             xs.append(x)
 
@@ -102,9 +110,9 @@ class PCNetwork(object):
 
         # ensure we're not calculating unneeded gradients
         # this improves speed by about 15% in the Whittington&Bogacz XOR example
-        for layer in self.layers:
-            layer.weight.requires_grad = False
-            layer.bias.requires_grad = False
+        for W, b in zip(self.W, self.b):
+            W.requires_grad = False
+            b.requires_grad = False
 
         # iterate until convergence
         for i in range(self.it_inference):
@@ -118,9 +126,9 @@ class PCNetwork(object):
             fast_optimizer.step()
 
         # reset requires_grad
-        for layer in self.layers:
-            layer.weight.requires_grad = True
-            layer.bias.requires_grad = True
+        for W, b in zip(self.W, self.b):
+            W.requires_grad = True
+            b.requires_grad = True
 
     def loss(self) -> torch.Tensor:
         """ Calculate the loss given the current values of the random variables. """
@@ -128,7 +136,7 @@ class PCNetwork(object):
         x = self.x[0]
         for i in range(len(self.dims) - 1):
             x_pred = self.activation[i](x)
-            x_pred = self.layers[i](x_pred)
+            x_pred = x_pred @ self.W[i].T + self.b[i]
 
             x = self.x[i + 1]
             # noinspection PyUnresolvedReferences
@@ -156,7 +164,7 @@ class PCNetwork(object):
 
         These are the weights and biases.
         """
-        return sum((list(_.parameters()) for _ in self.layers), [])
+        return self.W + self.b
 
     def fast_parameters(self) -> list:
         """ Create list of parameters to optimize in the fast phase.
