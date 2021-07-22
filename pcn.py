@@ -100,14 +100,27 @@ class PCNetwork(object):
         # create an optimizer for the fast parameters
         fast_optimizer = torch.optim.SGD(self.fast_parameters(), lr=self.lr_inference)
 
+        # ensure we're not calculating unneeded gradients
+        # this improves speed by about 15% in the Whittington&Bogacz XOR example
+        for layer in self.layers:
+            layer.weight.requires_grad = False
+            layer.bias.requires_grad = False
+
         # iterate until convergence
         for i in range(self.it_inference):
-            fast_optimizer.zero_grad()
+            # this is about 10% faster than fast_optimizer.zero_grad()
+            for param in self.fast_parameters():
+                param.grad = None
 
             loss = self.loss()
             loss.backward()
 
             fast_optimizer.step()
+
+        # reset requires_grad
+        for layer in self.layers:
+            layer.weight.requires_grad = True
+            layer.bias.requires_grad = True
 
     def loss(self) -> torch.Tensor:
         """ Calculate the loss given the current values of the random variables. """
