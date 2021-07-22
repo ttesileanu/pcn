@@ -302,18 +302,22 @@ def trained_current_and_ref() -> tuple:
 
     seed = 100
     dims = [2, 6, 5, 3]
+    variances = [0.5, 1.5, 2.7]
+    lr = 0.2
 
     x = torch.FloatTensor([[0.2, -0.3], [0.5, 0.7], [-0.3, 0.2]])
     y = torch.FloatTensor([[-0.5, 0.2, 0.7], [1.5, 0.6, -0.3], [-0.2, 0.5, 0.6]])
 
     # do some learning
     torch.manual_seed(seed)
-    net = PCNetwork(dims)
+    net = PCNetwork(dims, variances=variances)
 
     weights0 = [_.weight.clone().detach() for _ in net.layers]
     biases0 = [_.bias.clone().detach() for _ in net.layers]
 
-    optimizer = torch.optim.SGD(net.slow_parameters(), lr=0.2)
+    # the Whittington&Bogacz implementation inexplicably multiplies the learning rates
+    # by the output-layer variance
+    optimizer = torch.optim.SGD(net.slow_parameters(), lr=lr * variances[-1])
     for crt_x, crt_y in zip(x, y):
         net.forward_constrained(crt_x, crt_y)
 
@@ -321,7 +325,7 @@ def trained_current_and_ref() -> tuple:
         net.loss().backward()
         optimizer.step()
 
-    net_ref = PCNetworkRef(dims)
+    net_ref = PCNetworkRef(dims, variances=variances, lr=lr)
 
     # do some learning
     torch.manual_seed(seed)
@@ -355,3 +359,40 @@ def test_compare_weights_after_learning_to_ref_impl(trained_current_and_ref):
     for layer, W, b in zip(net.layers, net_ref.W, net_ref.b):
         assert torch.allclose(layer.weight, W)
         assert torch.allclose(layer.bias, b)
+
+
+def test_forward_constrained_with_nontrivial_variances_vs_ref_impl():
+    from pcn_ref import PCNetworkRef
+
+    seed = 100
+    dims = [2, 6, 5, 3]
+    variances = [0.5, 1.5, 2.7]
+
+    x = torch.FloatTensor([0.2, -0.3])
+    y = torch.FloatTensor([-0.5, 0.2, 0.7])
+
+    # do some learning
+    torch.manual_seed(seed)
+    net = PCNetwork(dims, variances=variances)
+
+    weights0 = [_.weight.clone().detach() for _ in net.layers]
+    biases0 = [_.bias.clone().detach() for _ in net.layers]
+
+    net.forward_constrained(x, y)
+
+    # now the reference implementation
+    net_ref = PCNetworkRef(dims, variances=variances)
+
+    torch.manual_seed(seed)
+    net_ref.reset()
+
+    # ensure matching weights and biases
+    for i, (crt_W, crt_b) in enumerate(zip(weights0, biases0)):
+        net_ref.W[i][:] = crt_W
+        net_ref.b[i][:] = crt_b
+
+    net_ref.forward(x)
+    net_ref.infer(y)
+
+    for crt_x, crt_x_ref in zip(net.x, net_ref.x):
+        assert torch.allclose(crt_x, crt_x_ref)
