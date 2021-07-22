@@ -15,6 +15,9 @@ def identity(x: torch.Tensor) -> torch.Tensor:
 class PCNetworkRef(object):
     """ A reference implementation of the predictive coding network from
     Whittington&Bogacz.
+
+    Based on the code cited in the paper, available at ModelDB with accession number
+    218084. URL: https://senselab.med.yale.edu/modeldb/ShowModel?model=218084 .
     """
 
     def __init__(
