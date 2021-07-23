@@ -1,3 +1,3 @@
-# Deep reduced-rank regression (constrained predictive-coding network)
+# Predictive-coding network
 
 Stub.
