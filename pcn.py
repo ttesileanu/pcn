@@ -83,7 +83,7 @@ class PCNetwork(object):
         self.x = xs
         return x
 
-    def forward_constrained(self, x: torch.Tensor, y: torch.Tensor):
+    def forward_constrained(self, x: torch.Tensor, y: torch.Tensor) -> Sequence:
         """ Do a forward pass where both input and output values are fixed.
 
         This runs a number of iterations (as set by `self.it_inference`) of the fast
@@ -92,6 +92,7 @@ class PCNetwork(object):
 
         :param x: input sample
         :param y: output sample
+        :return: loss evaluated before every optimization step
         """
         # start with a simple forward pass to initialize the layer values
         with torch.no_grad():
@@ -115,6 +116,7 @@ class PCNetwork(object):
             b.requires_grad = False
 
         # iterate until convergence
+        losses = np.zeros(self.it_inference)
         for i in range(self.it_inference):
             # this is about 10% faster than fast_optimizer.zero_grad()
             for param in self.fast_parameters():
@@ -125,10 +127,14 @@ class PCNetwork(object):
 
             fast_optimizer.step()
 
+            losses[i] = loss.item()
+
         # reset requires_grad
         for W, b in zip(self.W, self.b):
             W.requires_grad = True
             b.requires_grad = True
+
+        return losses
 
     def loss(self) -> torch.Tensor:
         """ Calculate the loss given the current values of the random variables. """

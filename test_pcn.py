@@ -490,3 +490,36 @@ def test_training_with_batches_of_nontrivial_size():
     out_batch = net.forward(test_x)
 
     assert torch.allclose(out, out_batch)
+
+
+def test_forward_constrained_returns_sequence_of_correct_length(net):
+    losses = net.forward_constrained(
+        torch.FloatTensor([-0.1, 0.2, 0.4]), torch.FloatTensor([0.3, -0.4])
+    )
+
+    assert len(losses) == net.it_inference
+
+
+def test_forward_constrained_returns_sequence_of_positive_numbers(net):
+    losses = net.forward_constrained(
+        torch.FloatTensor([-0.1, 0.2, 0.4]), torch.FloatTensor([0.3, -0.4])
+    )
+
+    assert min(losses) > 0
+
+
+def test_forward_constrained_returns_approximately_non_increasing_sequence(net):
+    losses = net.forward_constrained(
+        torch.FloatTensor([-0.1, 0.2, 0.4]), torch.FloatTensor([0.3, -0.4])
+    )
+
+    for _, __ in zip(losses[:-1], losses[1:]):
+        assert (_ >= __) or pytest.approx(_, __)
+
+
+def test_forward_constrained_returns_sequence_with_last_elem_smaller_than_first(net):
+    losses = net.forward_constrained(
+        torch.FloatTensor([-0.1, 0.2, 0.4]), torch.FloatTensor([0.3, -0.4])
+    )
+
+    assert losses[-1] < losses[0]
