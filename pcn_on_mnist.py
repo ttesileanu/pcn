@@ -113,10 +113,10 @@ def evaluate(net: PCNetwork, loader) -> tuple:
 
 
 # %%
-n_epochs = 50
+n_epochs = 150
 test_every = 1
 
-dims = [784, 600, 600, 10]
+dims = [784, 50, 10]
 it_inference = 20
 lr_inference = 0.1
 
@@ -160,12 +160,13 @@ with dv.FigureManager() as (_, ax):
 
 # %%
 with dv.FigureManager(1, 2) as (_, (ax1, ax2)):
-    ax1.plot(rms_errors)
+    ax1.semilogy(rms_errors)
     ax1.set_xlabel("epoch")
     ax1.set_ylabel("Test RMSE")
     
     ax2.plot(100 * accuracies)
     ax2.set_xlabel("epoch")
     ax2.set_ylabel("accuracy (%)")
+    ax2.set_ylim(0, 100)
 
 # %%
