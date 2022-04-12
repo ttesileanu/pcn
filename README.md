@@ -9,18 +9,27 @@ The implementation was tested using Python 3.8.2 and PyTorch 1.8.1, but it would
 
 ## Setup
 
-After downloading the code, `cd` to the directory and install pre-requisites (preferrably in a fresh virtual environment) using
+After downloading the code, `cd` to the directory and install pre-requisites (preferably in a fresh virtual environment) using
 
     pip install -r requirements.txt
 
+Install the code as a package using
+
+    pip install .
+
+in the same folder. For development, create an editable install using
+
+    pip install -e .
+
 Test that everything works:
 
-    pytest .
+    pytest test/
 
 ## Getting started
 
 The basic class is `PCNetwork`, defined in `pcn.py`, *e.g.,*
 
+    from pcn import PCNetwork
     net = PCNetwork(
         [784, 600, 600, 10],
         activation=torch.sigmoid,
@@ -52,3 +61,5 @@ To create actual `ipynb` notebook files, you can run
     jupytext --sync pcn_on_xor.py
 
 Alternatively, follow the instructions [here](https://github.com/mwouts/jupytext) to open the scripts as notebooks in [Jupyter](https://jupyter.org/) or [JupyterLab](https://jupyterlab.readthedocs.io/en/stable/).
+
+Another option is to open the files in VSCode, which will automatically recognize the cells and allow you to run them in a Jupyter instance.
