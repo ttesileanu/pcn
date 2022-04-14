@@ -358,8 +358,8 @@ def test_compare_weights_after_learning_to_ref_impl(trained_current_and_ref):
     net, net_ref = trained_current_and_ref
 
     for new_W, new_b, W, b in zip(net.W, net.b, net_ref.W, net_ref.b):
-        assert torch.allclose(new_W, W)
-        assert torch.allclose(new_b, b)
+        assert torch.allclose(new_W, W, atol=1e-7, rtol=1e-4)
+        assert torch.allclose(new_b, b, atol=1e-7, rtol=1e-4)
 
 
 def test_forward_constrained_with_nontrivial_variances_vs_ref_impl():
