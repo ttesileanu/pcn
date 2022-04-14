@@ -514,7 +514,7 @@ def test_forward_constrained_returns_approximately_non_increasing_sequence(net):
     )
 
     for _, __ in zip(losses[:-1], losses[1:]):
-        assert (_ >= __) or pytest.approx(_, __)
+        assert (_ >= __) or _ == pytest.approx(__)
 
 
 def test_forward_constrained_returns_sequence_with_last_elem_smaller_than_first(net):
